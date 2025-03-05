@@ -1,31 +1,37 @@
 require("dotenv").config();
-
 const express = require("express");
-const mongoose = require("mongoose");
+const path = require("path");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/database");
-const authRoutes = require("./routes/authRoutes");
-const { protect } = require("./middleware/authMiddleware");
 
+// Route imports
+const authRoutes = require("./routes/authRoutes");
+const homeRoutes = require("./routes/homeRoutes");
+
+const app = express();
+
+// Connect to Database
 connectDB();
 
+// Middleware
 app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(express.static("public"));
 
-app.use("/auth", authRoutes);
+// Routes
+app.use(authRoutes);
+app.use(homeRoutes);
 
-app.get("/home", protect, (req, res) => {
-  res.render("home", { user: req.user });
-});
-
+// Default route
 app.get("/", (req, res) => {
-  res.redirect("/auth/login");
+  res.redirect("/login");
 });
 
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on PORT ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

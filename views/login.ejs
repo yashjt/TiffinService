@@ -1,25 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Login - Tiffin Service</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
-    <div class="auth-container">
+    <div class="container">
         <h2>Login</h2>
-        <% if (typeof error !=='undefined' ) { %>
-            <div class="error">
+        <% if (error) { %>
+            <p class="error">
                 <%= error %>
-            </div>
+            </p>
             <% } %>
-                <form action="/auth/login" method="POST">
+                <form action="/login" method="POST">
                     <input type="email" name="email" placeholder="Email" required>
                     <input type="password" name="password" placeholder="Password" required>
                     <button type="submit">Login</button>
                 </form>
-                <p>Don't have an account? <a href="/auth/register">Register</a></p>
+                <p>Don't have an account? <a href="/register">Register here</a></p>
     </div>
 </body>
 

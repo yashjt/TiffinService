@@ -1,10 +1,11 @@
 const express = require("express");
-const router = express.Router();
 const authController = require("../controllers/authController");
 
-router.get("/login", (req, res) => res.render("login"));
-router.get("/register", (req, res) => res.render("register"));
+const router = express.Router();
+
+router.get("/register", authController.registerPage);
 router.post("/register", authController.register);
+router.get("/login", authController.loginPage);
 router.post("/login", authController.login);
 router.get("/logout", authController.logout);
 

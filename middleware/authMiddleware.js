@@ -1,18 +1,30 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const protect = async (req, res, next) => {
-  const token = req.cookies.jwt;
 
-  if (!token) {
-    return res.redirect("/auth/login");
-  }
+const authMiddleware = async (req, res, next) => {
   try {
+    // Get token from cookie
+    const token = req.cookies.jwt;
+
+    if (!token) {
+      return res.redirect("/login");
+    }
+
+    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
+
+    // Check if user still exists
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) {
+      return res.redirect("/login");
+    }
+
+    // Attach user to request
+    req.user = currentUser;
     next();
   } catch (error) {
-    res.redirect("/auth/login");
+    res.redirect("/login");
   }
 };
 
-module.exports = { protect };
+module.exports = authMiddleware;
