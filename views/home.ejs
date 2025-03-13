@@ -1,18 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
+<%- include('partials/header') %>
 
-<head>
-    <meta charset="UTF-8">
-    <title>Home</title>
-    <link rel="stylesheet" href="/css/styles.css">
-</head>
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2 text-center">
+                <h1 class="display-4">Welcome to Tiffin Management</h1>
+                <p class="lead">Delicious, Healthy, and Convenient Meals Delivered to Your Doorstep</p>
 
-<body>
-    <div class="container">
-        <h2>Welcome, <%= username %>!</h2>
-        <p>You are now logged in.</p>
-        <a href="/logout" class="logout-btn">Logout</a>
+                <% if (!user) { %>
+                    <div class="mt-4">
+                        <a href="/login" class="btn btn-primary me-3">Login</a>
+                        <a href="/register" class="btn btn-outline-primary">Register</a>
+                    </div>
+                    <% } else { %>
+                        <div class="mt-4">
+                            <a href="/order" class="btn btn-success">Order Now</a>
+                            <a href="/my-orders" class="btn btn-outline-secondary ms-3">View Orders</a>
+                        </div>
+                        <% } %>
+            </div>
+        </div>
+
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Fresh Meals</h5>
+                        <p class="card-text">Freshly prepared meals using high-quality ingredients.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Variety of Options</h5>
+                        <p class="card-text">Choose from a wide range of vegetarian and non-vegetarian meals.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Convenient Delivery</h5>
+                        <p class="card-text">Easy online ordering and timely delivery right to your doorstep.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</body>
 
-</html>
+    <%- include('partials/footer') %>

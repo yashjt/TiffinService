@@ -7,6 +7,7 @@ const connectDB = require("./config/database");
 // Route imports
 const authRoutes = require("./routes/authRoutes");
 const homeRoutes = require("./routes/homeRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 const app = express();
 
@@ -20,16 +21,39 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// global middleware
+
+app.use((req, res, next) => {
+  res.locals.user = req.user || null;
+  next(); // This is essential to continue to the next middleware
+});
 
 // Routes
+
 app.use(authRoutes);
 app.use(homeRoutes);
-
+// app.use(orderRoutes)
 // Default route
 app.get("/", (req, res) => {
   res.redirect("/login");
 });
+app.use((req, res) => {
+  res.status(404).render("404", {
+    title: "Page Not Found",
+    user: req.user || null,
+  });
+});
 
+// Error Handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).render("error", {
+    title: "Server Error",
+    error: err,
+    user: req.user || null,
+    active: "", // Provide a default value to avoid undefined error
+  });
+});
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -1,0 +1,123 @@
+<%- include('partials/header') %>
+
+    <div class="container mt-5">
+        <h2>Order Food</h2>
+        <form id="orderForm">
+            <div class="row">
+                <div class="col-md-6">
+                    <h3>Menu</h3>
+                    <% menu.forEach(item=> { %>
+                        <div class="card mb-3">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title">
+                                        <%= item.name %>
+                                    </h5>
+                                    <p class="card-text">₹<%= item.price %>
+                                    </p>
+                                </div>
+                                <input type="number" min="0" value="0" class="form-control w-25 item-quantity"
+                                    data-id="<%= item.id %>" data-name="<%= item.name %>"
+                                    data-price="<%= item.price %>">
+                            </div>
+                        </div>
+                        <% }); %>
+                </div>
+                <div class="col-md-6">
+                    <h3>Order Details</h3>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Delivery Address</label>
+                                <textarea class="form-control" id="deliveryAddress" rows="3" required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <strong>Total Price: ₹<span id="totalPrice">0</span></strong>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Place Order</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const quantityInputs = document.querySelectorAll('.item-quantity');
+            const totalPriceSpan = document.getElementById('totalPrice');
+            const orderForm = document.getElementById('orderForm');
+
+            function updateTotalPrice() {
+                let totalPrice = 0;
+                const orderItems = [];
+
+                quantityInputs.forEach(input => {
+                    const quantity = parseInt(input.value) || 0;
+                    const price = parseFloat(input.dataset.price);
+                    const name = input.dataset.name;
+
+                    if (quantity > 0) {
+                        orderItems.push({
+                            name: name,
+                            quantity: quantity,
+                            price: price
+                        });
+                        totalPrice += quantity * price;
+                    }
+                });
+
+                totalPriceSpan.textContent = totalPrice.toFixed(2);
+                return { totalPrice, orderItems };
+            }
+
+            quantityInputs.forEach(input => {
+                input.addEventListener('input', updateTotalPrice);
+            });
+
+            orderForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+                const { totalPrice, orderItems } = updateTotalPrice();
+
+                if (orderItems.length === 0) {
+                    alert('Please select at least one item');
+                    return;
+                }
+
+                if (!deliveryAddress) {
+                    alert('Please provide a delivery address');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/create-order', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            items: orderItems,
+                            deliveryAddress: deliveryAddress
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert('Order placed successfully!');
+                        window.location.href = '/my-orders';
+                    } else {
+                        alert(result.error || 'Failed to place order');
+                    }
+                } catch (error) {
+                    console.error('Order submission error:', error);
+                    alert('An error occurred while placing the order');
+                }
+            });
+
+            // Initial total price calculation
+            updateTotalPrice();
+        });
+    </script>

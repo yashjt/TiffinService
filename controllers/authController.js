@@ -9,11 +9,27 @@ const generateToken = (id) => {
 };
 
 exports.registerPage = (req, res) => {
-  res.render("register", { error: null });
+  // If user is already logged in, redirect to home
+  if (req.user) {
+    return res.redirect("/home");
+  }
+  res.render("register", {
+    error: null,
+    title: "Register",
+    active: "register",
+  });
 };
 
 exports.loginPage = (req, res) => {
-  res.render("login", { error: null });
+  // If user is already logged in, redirect to home
+  if (req.user) {
+    return res.redirect("/home");
+  }
+  res.render("login", {
+    error: null,
+    title: "Login",
+    active: "login",
+  });
 };
 
 exports.register = async (req, res) => {
@@ -28,6 +44,8 @@ exports.register = async (req, res) => {
     if (existingUser) {
       return res.render("register", {
         error: "User with this email or username already exists",
+        title: "Register",
+        active: "register",
       });
     }
 
@@ -54,6 +72,8 @@ exports.register = async (req, res) => {
   } catch (error) {
     res.render("register", {
       error: error.message || "Registration failed",
+      title: "Register",
+      active: "register",
     });
   }
 };
@@ -66,6 +86,8 @@ exports.login = async (req, res) => {
     if (!email || !password) {
       return res.render("login", {
         error: "Please provide email and password",
+        title: "Login",
+        active: "login",
       });
     }
 
@@ -76,6 +98,8 @@ exports.login = async (req, res) => {
     if (!user || !(await user.correctPassword(password, user.password))) {
       return res.render("login", {
         error: "Incorrect email or password",
+        title: "Login",
+        active: "login",
       });
     }
 
@@ -95,6 +119,8 @@ exports.login = async (req, res) => {
   } catch (error) {
     res.render("login", {
       error: error.message || "Login failed",
+      title: "Login",
+      active: "login",
     });
   }
 };
