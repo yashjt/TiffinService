@@ -32,15 +32,16 @@ app.use((req, res, next) => {
 
 app.use(authRoutes);
 app.use(homeRoutes);
-// app.use(orderRoutes)
+app.use(orderRoutes);
 // Default route
 app.get("/", (req, res) => {
   res.redirect("/login");
 });
 app.use((req, res) => {
   res.status(404).render("404", {
-    title: "Page Not Found",
-    user: req.user || null,
+    title: "404 - Page Not Found",
+    active: null, // or any default value
+    user: req.session.user || null,
   });
 });
 

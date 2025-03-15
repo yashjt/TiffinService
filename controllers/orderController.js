@@ -21,7 +21,7 @@ exports.getOrderPage = (req, res) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { item, deliveryAddress } = req.body;
+    const { items, deliveryAddress } = req.body;
     if (!items || !deliveryAddress) {
       return res.status(400).json({ error: "Invalid order details" });
     }
