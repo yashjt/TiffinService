@@ -50,8 +50,23 @@ exports.createOrder = async (req, res) => {
 
 exports.getUserOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).sort({
-      created: -1,
+    const orders = await Order.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean(); // Using lean() for better performance
+
+    res.render("order-history", {
+      orders,
+      user: req.user,
+      title: "Order History",
+      active: "orders",
     });
-  } catch (error) {}
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).render("error", {
+      title: "Server Error",
+      error: "Failed to fetch orders",
+      user: req.user,
+      active: "",
+    });
+  }
 };

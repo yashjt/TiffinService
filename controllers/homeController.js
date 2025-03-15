@@ -10,7 +10,6 @@ exports.getHomePage = async (req, res) => {
     });
   } catch (error) {
     res.status(500).render("error", {
-      // Render error.ejs instead of index.ejs
       error: error.message,
       user: req.user || null,
       title: "Error",
