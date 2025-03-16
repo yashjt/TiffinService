@@ -1,4 +1,5 @@
 const Order = require("../models/Order");
+
 exports.getOrderPage = (req, res) => {
   if (!req.user) {
     return res.redirect("/login");
@@ -68,5 +69,44 @@ exports.getUserOrders = async (req, res) => {
       user: req.user,
       active: "",
     });
+  }
+};
+
+// Add this new function for cancelling orders
+exports.cancelOrder = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    // Find the order and check if it belongs to the current user
+    const order = await Order.findOne({
+      _id: orderId,
+      user: req.user._id,
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Check if the order can be cancelled (only if it's not already delivered or cancelled)
+    if (order.status === "Delivered") {
+      return res.status(400).json({
+        error: "Cannot cancel an order that has already been delivered",
+      });
+    }
+
+    if (order.status === "Cancelled") {
+      return res
+        .status(400)
+        .json({ error: "This order has already been cancelled" });
+    }
+
+    // Update the order status to cancelled
+    order.status = "Cancelled";
+    await order.save();
+
+    res.status(200).json({ message: "Order cancelled successfully" });
+  } catch (error) {
+    console.error("Error cancelling order:", error);
+    res.status(500).json({ error: "Failed to cancel order" });
   }
 };

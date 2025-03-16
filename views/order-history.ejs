@@ -16,9 +16,9 @@
                                     </small>
                                 </div>
                                 <span class="badge <%= order.status === 'Delivered' ? 'bg-success' : 
-                                                   order.status === 'Confirmed' ? 'bg-primary' : 
-                                                   order.status === 'Cancelled' ? 'bg-danger' : 
-                                                   'bg-warning' %>">
+                                               order.status === 'Confirmed' ? 'bg-primary' : 
+                                               order.status === 'Cancelled' ? 'bg-danger' : 
+                                               'bg-warning' %>">
                                     <%= order.status %>
                                 </span>
                             </div>
@@ -65,7 +65,7 @@
                                             <%= order.deliveryAddress %>
                                         </p>
 
-                                        <% if (order.status==='Pending' ) { %>
+                                        <% if (order.status !=='Delivered' && order.status !=='Cancelled' ) { %>
                                             <button class="btn btn-sm btn-outline-danger cancel-order-btn"
                                                 data-order-id="<%= order._id %>">
                                                 Cancel Order
