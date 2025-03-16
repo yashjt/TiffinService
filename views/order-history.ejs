@@ -44,16 +44,16 @@
                                                         <td>
                                                             <%= item.quantity %>
                                                         </td>
-                                                        <td>₹<%= item.price.toFixed(2) %>
+                                                        <td>$<%= item.price.toFixed(2) %>
                                                         </td>
-                                                        <td>₹<%= (item.price * item.quantity).toFixed(2) %>
+                                                        <td>$<%= (item.price * item.quantity).toFixed(2) %>
                                                         </td>
                                                     </tr>
                                                     <% }) %>
                                                         <tr class="table-active">
                                                             <td colspan="3" class="text-end"><strong>Total:</strong>
                                                             </td>
-                                                            <td><strong>₹<%= order.totalPrice.toFixed(2) %></strong>
+                                                            <td><strong>$<%= order.totalPrice.toFixed(2) %></strong>
                                                             </td>
                                                         </tr>
                                             </tbody>
