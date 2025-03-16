@@ -124,7 +124,7 @@ exports.login = async (req, res) => {
     });
   }
 };
-
+// logout logic
 exports.logout = (req, res) => {
   res.cookie("jwt", "loggedout", {
     expires: new Date(Date.now() + 10 * 1000),
