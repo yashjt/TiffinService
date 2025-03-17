@@ -37,11 +37,13 @@ exports.createOrder = async (req, res) => {
       items: items,
       totalPrice: totalPrice,
       deliveryAddress: deliveryAddress,
+      status: "Pending", // Change default status to Pending until payment
     });
     await order.save();
     res.status(201).json({
       message: "Order placed successfully",
       orderId: order._id,
+      redirect: `/checkout/${order._id}`, // Add redirect URL to checkout
     });
   } catch (error) {
     console.error("Order creation error:", error);

@@ -35,6 +35,25 @@
                                 <strong>Total Price: $<span id="totalPrice">0</span></strong>
                             </div>
                             <button type="submit" class="btn btn-primary">Place Order</button>
+                            <div id="orderProcessing" class="mt-3 d-none">
+                                <div class="spinner-border text-primary spinner-border-sm" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span class="ms-2">Processing your order...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary (will be shown after order is created) -->
+                    <div id="orderSummary" class="card mt-4 d-none">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Order Created Successfully!</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>Your order has been created. Please proceed to checkout to complete your payment.</p>
+                            <p><strong>Order ID:</strong> <span id="summaryOrderId"></span></p>
+                            <p><strong>Total:</strong> $<span id="summaryTotal"></span></p>
+                            <a id="checkoutLink" href="#" class="btn btn-primary">Proceed to Checkout</a>
                         </div>
                     </div>
                 </div>
@@ -47,6 +66,11 @@
             const quantityInputs = document.querySelectorAll('.item-quantity');
             const totalPriceSpan = document.getElementById('totalPrice');
             const orderForm = document.getElementById('orderForm');
+            const orderProcessing = document.getElementById('orderProcessing');
+            const orderSummary = document.getElementById('orderSummary');
+            const summaryOrderId = document.getElementById('summaryOrderId');
+            const summaryTotal = document.getElementById('summaryTotal');
+            const checkoutLink = document.getElementById('checkoutLink');
 
             function updateTotalPrice() {
                 let totalPrice = 0;
@@ -91,6 +115,11 @@
                     return;
                 }
 
+                // Show processing indicator
+                const submitButton = orderForm.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                orderProcessing.classList.remove('d-none');
+
                 try {
                     const response = await fetch('/create-order', {
                         method: 'POST',
@@ -106,13 +135,33 @@
                     const result = await response.json();
 
                     if (response.ok) {
-                        alert('Order placed successfully!');
-                        window.location.href = '/my-orders';
+                        // Hide the processing indicator
+                        orderProcessing.classList.add('d-none');
+
+                        // Show order summary
+                        summaryOrderId.textContent = result.orderId;
+                        summaryTotal.textContent = totalPrice.toFixed(2);
+                        checkoutLink.href = `/checkout/${result.orderId}`;
+                        orderSummary.classList.remove('d-none');
+
+                        // Scroll to the order summary
+                        orderSummary.scrollIntoView({ behavior: 'smooth' });
+
+                        // Optional: Automatically redirect to checkout after a delay
+                        // setTimeout(() => {
+                        //     window.location.href = `/checkout/${result.orderId}`;
+                        // }, 3000);
                     } else {
+                        // Re-enable the submit button and hide processing
+                        submitButton.disabled = false;
+                        orderProcessing.classList.add('d-none');
                         alert(result.error || 'Failed to place order');
                     }
                 } catch (error) {
                     console.error('Order submission error:', error);
+                    // Re-enable the submit button and hide processing
+                    submitButton.disabled = false;
+                    orderProcessing.classList.add('d-none');
                     alert('An error occurred while placing the order');
                 }
             });
@@ -121,3 +170,5 @@
             updateTotalPrice();
         });
     </script>
+
+    <%- include('partials/footer') %>

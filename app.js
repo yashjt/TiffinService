@@ -3,7 +3,7 @@ const express = require("express");
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/database");
-
+const paymentRoutes = require("./routes/paymentRoutes");
 // Route imports
 const authRoutes = require("./routes/authRoutes");
 const homeRoutes = require("./routes/homeRoutes");
@@ -33,6 +33,7 @@ app.use((req, res, next) => {
 app.use(authRoutes);
 app.use(homeRoutes);
 app.use(orderRoutes);
+app.use(paymentRoutes);
 // // Default route
 // app.get("/", (req, res) => {
 //   res.redirect("/login");
