@@ -6,7 +6,7 @@ exports.getOrderPage = (req, res) => {
   }
 
   const menu = [
-    { id: 1, name: "Vegetarian Thali", price: 10 },
+    { id: 1, name: "Vegetarian Thali", price: 1 },
     { id: 2, name: "Non-Vegetarian Thali", price: 15 },
     { id: 3, name: "Paneer Masala", price: 12 },
     { id: 4, name: "Chicken Curry", price: 18 },

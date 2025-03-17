@@ -30,8 +30,21 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Pending", "Confirmed", "Delivered", "Cancelled"],
-      default: "Confirmed",
+      enum: [
+        "Pending",
+        "Confirmed",
+        "Preparing",
+        "Out for Delivery",
+        "Delivered",
+        "Cancelled",
+      ],
+      default: "Pending",
+    },
+
+    paymentMethod: {
+      type: String,
+      enum: ["Credit Card", "Cash on Delivery", "Credit Card (Fallback)"],
+      default: "Credit Card",
     },
     deliveryAddress: {
       type: String,

@@ -16,4 +16,16 @@ router.post(
   paymentController.handlePaymentSuccess
 );
 
+// Add these new routes
+router.post(
+  "/place-cod-order",
+  authMiddleware,
+  paymentController.placeCodOrder
+);
+router.post(
+  "/fallback-payment-success",
+  authMiddleware,
+  paymentController.fallbackPaymentSuccess
+);
+
 module.exports = router;
