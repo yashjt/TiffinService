@@ -2,6 +2,10 @@
 
     <div class="container mt-5">
         <h2>Order Food</h2>
+        <!-- <div class="alert alert-info">
+            <p><strong>Note:</strong> This menu is synced with the Next.js application. Any changes made in the Next.js
+                app will be reflected here.</p>
+        </div> -->
         <form id="orderForm">
             <div class="row">
                 <div class="col-md-6">
@@ -13,11 +17,11 @@
                                     <h5 class="card-title">
                                         <%= item.name %>
                                     </h5>
-                                    <p class="card-text">$<%= item.price %>
+                                    <p class="card-text">$<%= item.price.toFixed(2) %>
                                     </p>
                                 </div>
                                 <input type="number" min="0" value="0" class="form-control w-25 item-quantity"
-                                    data-id="<%= item.id %>" data-name="<%= item.name %>"
+                                    data-id="<%= item.id || item._id %>" data-name="<%= item.name %>"
                                     data-price="<%= item.price %>">
                             </div>
                         </div>
@@ -32,7 +36,7 @@
                                 <textarea class="form-control" id="deliveryAddress" rows="3" required></textarea>
                             </div>
                             <div class="mb-3">
-                                <strong>Total Price: $<span id="totalPrice">0</span></strong>
+                                <strong>Total Price: $<span id="totalPrice">0.00</span></strong>
                             </div>
                             <button type="submit" class="btn btn-primary">Place Order</button>
                             <div id="orderProcessing" class="mt-3 d-none">
@@ -80,9 +84,11 @@
                     const quantity = parseInt(input.value) || 0;
                     const price = parseFloat(input.dataset.price);
                     const name = input.dataset.name;
+                    const id = input.dataset.id;
 
                     if (quantity > 0) {
                         orderItems.push({
+                            id: id,
                             name: name,
                             quantity: quantity,
                             price: price
@@ -146,11 +152,6 @@
 
                         // Scroll to the order summary
                         orderSummary.scrollIntoView({ behavior: 'smooth' });
-
-                        // Optional: Automatically redirect to checkout after a delay
-                        // setTimeout(() => {
-                        //     window.location.href = `/checkout/${result.orderId}`;
-                        // }, 3000);
                     } else {
                         // Re-enable the submit button and hide processing
                         submitButton.disabled = false;

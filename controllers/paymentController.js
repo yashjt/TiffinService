@@ -1,15 +1,46 @@
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Order = require("../models/Order");
 const Payment = require("../models/Payment");
+const User = require("../models/User");
+
+// Helper function to get user ID from Auth0 or database user
+const getUserId = async (req) => {
+  if (req.user) {
+    // If we already have a database user, use its ID
+    return req.user._id;
+  } else if (req.oidc && req.oidc.isAuthenticated()) {
+    // Find or create user based on Auth0 profile
+    const auth0User = req.oidc.user;
+    let dbUser = await User.findOne({ email: auth0User.email });
+
+    if (!dbUser) {
+      // Create new user if not found
+      dbUser = await User.create({
+        username:
+          auth0User.nickname || auth0User.name || auth0User.email.split("@")[0],
+        email: auth0User.email,
+        password: Math.random().toString(36).slice(-10), // Random password
+        auth0Id: auth0User.sub,
+      });
+    }
+
+    return dbUser._id;
+  }
+
+  throw new Error("User not authenticated");
+};
 
 exports.createPaymentIntent = async (req, res) => {
   try {
     const { orderId } = req.body;
 
+    // Get user ID from Auth0 or database
+    const userId = await getUserId(req);
+
     // Find the order
     const order = await Order.findOne({
       _id: orderId,
-      user: req.user._id,
+      user: userId,
     });
 
     if (!order) {
@@ -22,7 +53,7 @@ exports.createPaymentIntent = async (req, res) => {
       currency: "usd",
       metadata: {
         orderId: order._id.toString(),
-        userId: req.user._id.toString(),
+        userId: userId.toString(),
       },
     });
 
@@ -38,6 +69,9 @@ exports.createPaymentIntent = async (req, res) => {
 exports.handlePaymentSuccess = async (req, res) => {
   try {
     const { paymentIntentId, orderId } = req.body;
+
+    // Get user ID from Auth0 or database
+    const userId = await getUserId(req);
 
     // Verify the payment with Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -79,23 +113,26 @@ exports.getCheckoutPage = async (req, res) => {
   try {
     const orderId = req.params.id;
 
+    // Get user ID from Auth0 or database
+    const userId = await getUserId(req);
+
     const order = await Order.findOne({
       _id: orderId,
-      user: req.user._id,
+      user: userId,
     });
 
     if (!order) {
       return res.status(404).render("error", {
         title: "Order Not Found",
         error: "The requested order does not exist",
-        user: req.user,
+        user: req.oidc ? req.oidc.user : req.user,
         active: "",
       });
     }
 
     res.render("checkout", {
       order: order,
-      user: req.user,
+      user: req.oidc ? req.oidc.user : req.user,
       title: "Checkout",
       active: "orders",
       stripePublicKey: process.env.STRIPE_PUBLIC_KEY,
@@ -105,19 +142,23 @@ exports.getCheckoutPage = async (req, res) => {
     res.status(500).render("error", {
       title: "Server Error",
       error: "Failed to load checkout page",
-      user: req.user,
+      user: req.oidc ? req.oidc.user : req.user,
       active: "",
     });
   }
 };
+
 exports.placeCodOrder = async (req, res) => {
   try {
     const { orderId } = req.body;
 
+    // Get user ID from Auth0 or database
+    const userId = await getUserId(req);
+
     // Find the order
     const order = await Order.findOne({
       _id: orderId,
-      user: req.user._id,
+      user: userId,
     });
 
     if (!order) {
@@ -155,10 +196,13 @@ exports.fallbackPaymentSuccess = async (req, res) => {
   try {
     const { orderId } = req.body;
 
+    // Get user ID from Auth0 or database
+    const userId = await getUserId(req);
+
     // Find the order
     const order = await Order.findOne({
       _id: orderId,
-      user: req.user._id,
+      user: userId,
     });
 
     if (!order) {

@@ -9,7 +9,6 @@
                 <% if (!user) { %>
                     <div class="mt-4">
                         <a href="/login" class="btn btn-primary me-3">Login</a>
-                        <a href="/register" class="btn btn-outline-primary">Register</a>
                     </div>
                     <% } else { %>
                         <div class="mt-4">
@@ -72,7 +71,7 @@
             </div>
             <div class="col-md-6">
                 <!-- <img src="/images/about-tiffin.jpg" alt="About Tiffin Management" class="img-fluid rounded shadow"
-                    onerror="this.src='https://via.placeholder.com/600x400?text=Our+Kitchen'"> -->
+                onerror="this.src='https://via.placeholder.com/600x400?text=Our+Kitchen'"> -->
             </div>
             <div class="col-md-6">
                 <h3>Our Story</h3>
@@ -216,7 +215,7 @@
                 <h3 class="display-6">Ready to enjoy delicious tiffin meals?</h3>
                 <p class="lead">Join thousands of satisfied customers today!</p>
                 <% if (!user) { %>
-                    <a href="/register" class="btn btn-light btn-lg mt-3">Get Started Now</a>
+                    <a href="/login" class="btn btn-light btn-lg mt-3">Get Started Now</a>
                     <% } else { %>
                         <a href="/order" class="btn btn-light btn-lg mt-3">Order Your Tiffin</a>
                         <% } %>

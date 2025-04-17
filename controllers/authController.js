@@ -1,134 +1,62 @@
 const User = require("../models/User");
-const jwt = require("jsonwebtoken");
-
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES,
-  });
+const { auth } = require("express-openid-connect");
+const config = {
+  authRequired: false,
+  auth0Logout: true,
+  secret: process.env.AUTH0_SECRET,
+  baseURL: process.env.AUTH0_BASE_URL,
+  clientID: process.env.AUTH0_CLIENT_ID,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET,
+  issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
+  routes: {
+    login: "/login",
+    logout: "/logout",
+    callback: "/callback",
+  },
 };
+exports.authConfig = auth(config);
 
 exports.registerPage = (req, res) => {
-  // If user is already logged in, redirect to home
-  if (req.user) {
-    return res.redirect("/home");
-  }
-  res.render("register", {
-    error: null,
-    title: "Register",
-    active: "register",
-  });
+  return res.redirect("/login");
 };
 
 exports.loginPage = (req, res) => {
-  // If user is already logged in, redirect to home
-  if (req.user) {
+  if (req.oidc.isAuthenticated()) {
     return res.redirect("/home");
   }
-  res.render("login", {
-    error: null,
-    title: "Login",
-    active: "login",
-  });
+  res.oidc.login({ returnTo: "/home" });
 };
 
-exports.register = async (req, res) => {
+exports.callback = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    if (req.oidc.isAuthenticated()) {
+      const auth0User = req.oidc.user;
+      let user = await User.findOne({ email: auth0User.email });
 
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }],
-    });
-
-    if (existingUser) {
-      return res.render("register", {
-        error: "User with this email or username already exists",
-        title: "Register",
-        active: "register",
-      });
+      if (!user) {
+        user = await User.create({
+          username:
+            auth0User.nickname ||
+            auth0User.name ||
+            auth0User.email.split("@")[0],
+          email: auth0User.email,
+          // We don't need to store the password as Auth0 handles authentication
+          password: Math.random().toString(36).slice(-10), // Random password since we won't use it
+          auth0Id: auth0User.sub, // Store Auth0 user ID
+        });
+      }
+      res.redirect("/login");
     }
-
-    // Create new user
-    const newUser = await User.create({
-      username,
-      email,
-      password,
-    });
-
-    // Generate token
-    const token = generateToken(newUser._id);
-
-    // Set cookie
-    res.cookie("jwt", token, {
-      expires: new Date(
-        Date.now() + process.env.JWT_EXPIRES.slice(0, -1) * 24 * 60 * 60 * 1000
-      ),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    });
-
-    res.redirect("/home");
   } catch (error) {
-    res.render("register", {
-      error: error.message || "Registration failed",
-      title: "Register",
-      active: "register",
-    });
+    console.log("Auth0 callback error:", error);
+    res.redirect("/login");
   }
 };
-
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Check if email and password exist
-    if (!email || !password) {
-      return res.render("login", {
-        error: "Please provide email and password",
-        title: "Login",
-        active: "login",
-      });
-    }
-
-    // Find user and select password
-    const user = await User.findOne({ email }).select("+password");
-
-    // Check if user exists and password is correct
-    if (!user || !(await user.correctPassword(password, user.password))) {
-      return res.render("login", {
-        error: "Incorrect email or password",
-        title: "Login",
-        active: "login",
-      });
-    }
-
-    // Generate token
-    const token = generateToken(user._id);
-
-    // Set cookie
-    res.cookie("jwt", token, {
-      expires: new Date(
-        Date.now() + process.env.JWT_EXPIRES.slice(0, -1) * 24 * 60 * 60 * 1000
-      ),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-    });
-
-    res.redirect("/home");
-  } catch (error) {
-    res.render("login", {
-      error: error.message || "Login failed",
-      title: "Login",
-      active: "login",
-    });
-  }
-};
-// logout logic
 exports.logout = (req, res) => {
-  res.cookie("jwt", "loggedout", {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-  });
-  res.redirect("/login");
+  res.oidc.logout({ returnTo: process.env.AUTH0_BASE_URL });
+};
+
+// Profile route to get user info
+exports.profile = (req, res) => {
+  res.json(req.oidc.user);
 };

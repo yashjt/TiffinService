@@ -2,6 +2,9 @@
 
     <div class="container mt-5">
         <h2>Complete Your Payment</h2>
+        <div class="alert alert-info">
+            <p><strong>Note:</strong> This checkout page handles orders from both Express.js and Next.js apps.</p>
+        </div>
 
         <div class="row">
             <div class="col-md-8">
@@ -211,7 +214,7 @@
                         payment_method: {
                             card: cardElement,
                             billing_details: {
-                                name: '<%= user.name || "Customer" %>'
+                                name: '<%= user.name || user.nickname || user.email || "Customer" %>'
                             },
                         },
                     });
@@ -338,4 +341,3 @@
     </script>
 
     <%- include('partials/footer') %>
-    
