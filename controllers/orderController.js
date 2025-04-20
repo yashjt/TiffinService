@@ -1,6 +1,7 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const orderRuleEngine = require("../utils/orderRuleEngine");
 
 exports.getOrderPage = async (req, res) => {
   // With Auth0, check if authenticated
@@ -15,22 +16,29 @@ exports.getOrderPage = async (req, res) => {
       new mongoose.Schema({
         name: String,
         price: Number,
+        category: String,
+        isAvailable: Boolean,
       }),
       "menus"
     ); // 'menus' is the collection name your Next.js app uses
 
-    // Query menu items from the database
-    const menuItems = await MenuModel.find({});
+    // Query menu items from the database (only available items)
+    const menuItems = await MenuModel.find({ isAvailable: { $ne: false } });
 
     // If no menu items found in database, use the default menu
     const menu =
       menuItems.length > 0
         ? menuItems
         : [
-            { id: 1, name: "Vegetarian Thali", price: 12 },
-            { id: 2, name: "Non-Vegetarian Thali", price: 15 },
-            { id: 3, name: "Paneer Masala", price: 12 },
-            { id: 4, name: "Chicken Curry", price: 18 },
+            { id: 1, name: "Vegetarian Thali", price: 12, category: "main" },
+            {
+              id: 2,
+              name: "Non-Vegetarian Thali",
+              price: 15,
+              category: "main",
+            },
+            { id: 3, name: "Paneer Masala", price: 12, category: "main" },
+            { id: 4, name: "Chicken Curry", price: 18, category: "main" },
           ];
 
     // Format menu items to match the expected format
@@ -38,6 +46,7 @@ exports.getOrderPage = async (req, res) => {
       id: item._id || item.id,
       name: item.name,
       price: item.price,
+      category: item.category || "main",
     }));
 
     // Use either database user or Auth0 user
@@ -53,10 +62,10 @@ exports.getOrderPage = async (req, res) => {
     console.error("Error fetching menu:", error);
     // Fallback to default menu if there's an error
     const menu = [
-      { id: 1, name: "Vegetarian Thali", price: 12 },
-      { id: 2, name: "Non-Vegetarian Thali", price: 15 },
-      { id: 3, name: "Paneer Masala", price: 12 },
-      { id: 4, name: "Chicken Curry", price: 18 },
+      { id: 1, name: "Vegetarian Thali", price: 12, category: "main" },
+      { id: 2, name: "Non-Vegetarian Thali", price: 15, category: "main" },
+      { id: 3, name: "Paneer Masala", price: 12, category: "main" },
+      { id: 4, name: "Chicken Curry", price: 18, category: "main" },
     ];
 
     const user = req.user || req.oidc.user;
@@ -78,8 +87,31 @@ exports.createOrder = async (req, res) => {
     }
 
     const { items, deliveryAddress } = req.body;
-    if (!items || !deliveryAddress) {
+
+    // Validate required fields
+    if (!items || !Array.isArray(items) || !deliveryAddress) {
       return res.status(400).json({ error: "Invalid order details" });
+    }
+
+    // calculate total price
+    const totalPrice = items.reduce((total, item) => {
+      return total + item.price * item.quantity;
+    }, 0);
+
+    // Create order object for validation
+    const orderData = {
+      items: items,
+      totalPrice: totalPrice,
+      deliveryAddress: deliveryAddress,
+    };
+
+    // Validate with rule engine
+    const validationResult = orderRuleEngine.validate(orderData);
+    if (!validationResult.valid) {
+      return res.status(400).json({
+        error: "Order validation failed",
+        validationErrors: validationResult.errors,
+      });
     }
 
     // Get user ID - either from database user or create/get from Auth0 user
@@ -108,11 +140,6 @@ exports.createOrder = async (req, res) => {
 
       userId = dbUser._id;
     }
-
-    // calculate total price
-    const totalPrice = items.reduce((total, item) => {
-      return total + item.price * item.quantity;
-    }, 0);
 
     // create order
     const order = new Order({
