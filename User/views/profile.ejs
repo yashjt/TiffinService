@@ -1,0 +1,69 @@
+<%- include('partials/header') %>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">My Profile</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center mb-4 mb-md-0">
+                                <% if (user.picture) { %>
+                                    <img src="<%= user.picture %>" alt="Profile" class="img-fluid rounded-circle mb-3"
+                                        style="max-width: 150px;">
+                                    <% } else { %>
+                                        <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                                            style="width: 150px; height: 150px;">
+                                            <i class="bi bi-person-circle text-secondary" style="font-size: 5rem;"></i>
+                                        </div>
+                                        <% } %>
+                            </div>
+                            <div class="col-md-8">
+                                <h3>
+                                    <%= user.name || user.nickname || 'User' %>
+                                </h3>
+                                <hr>
+                                <div class="mb-3">
+                                    <strong><i class="bi bi-envelope me-2"></i>Email:</strong>
+                                    <p>
+                                        <%= user.email %>
+                                    </p>
+                                </div>
+
+                                <% if (user.email_verified) { %>
+                                    <div class="badge bg-success mb-3"><i class="bi bi-check-circle me-1"></i> Email
+                                        Verified</div>
+                                    <% } else { %>
+                                        <div class="badge bg-warning mb-3"><i class="bi bi-exclamation-circle me-1"></i>
+                                            Email Not Verified</div>
+                                        <% } %>
+
+                                            <div class="mt-4">
+                                                <a href="https://manage.auth0.com/dashboard" target="_blank"
+                                                    class="btn btn-outline-primary">
+                                                    <i class="bi bi-pencil-square me-1"></i> Manage Account
+                                                </a>
+                                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mt-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Recent Activity</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>Your recent orders and activity will appear here.</p>
+                        <a href="/my-orders" class="btn btn-success">
+                            <i class="bi bi-list-check me-1"></i> View My Orders
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>

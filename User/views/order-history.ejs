@@ -1,0 +1,210 @@
+<%- include('partials/header') %>
+
+    <div class="container mt-5">
+        <h2>Your Order History</h2>
+
+        <% if (orders && orders.length> 0) { %>
+            <div class="row">
+                <% orders.forEach((order, index)=> { %>
+                    <div class="col-md-12 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Order #<%= order._id.toString().slice(-6).toUpperCase() %></strong>
+                                    <small class="text-muted ms-3">
+                                        <%= new Date(order.createdAt).toLocaleString() %>
+                                    </small>
+                                </div>
+                                <span class="badge <%= order.status === 'Delivered' ? 'bg-success' : 
+                                               order.status === 'Confirmed' ? 'bg-primary' : 
+                                               order.status === 'Cancelled' ? 'bg-danger' : 
+                                               'bg-warning' %>">
+                                    <%= order.status %>
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <h5>Items:</h5>
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Item</th>
+                                                    <th>Quantity</th>
+                                                    <th>Price</th>
+                                                    <th>Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% order.items.forEach(item=> { %>
+                                                    <tr>
+                                                        <td>
+                                                            <%= item.name %>
+                                                                <% if(item.name.toLowerCase().includes('premium')) { %>
+                                                                    <span
+                                                                        class="badge bg-warning text-dark">Premium</span>
+                                                                    <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <%= item.quantity %>
+                                                                <% if (item.quantity>= 5) { %>
+                                                                    <span class="badge bg-info text-dark">Bulk</span>
+                                                                    <% } %>
+                                                        </td>
+                                                        <td>$<%= item.price.toFixed(2) %>
+                                                        </td>
+                                                        <td>$<%= (item.price * item.quantity).toFixed(2) %>
+                                                        </td>
+                                                    </tr>
+                                                    <% }) %>
+                                                        <tr class="table-active">
+                                                            <td colspan="3" class="text-end"><strong>Total:</strong>
+                                                            </td>
+                                                            <td><strong>$<%= order.totalPrice.toFixed(2) %></strong>
+                                                            </td>
+                                                        </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h5>Delivery Details:</h5>
+                                        <p><strong>Address:</strong><br>
+                                            <%= order.deliveryAddress %>
+                                        </p>
+
+                                        <% if (order.status !=='Delivered' && order.status !=='Cancelled' ) { %>
+                                            <button class="btn btn-sm btn-outline-danger cancel-order-btn"
+                                                data-order-id="<%= order._id %>">
+                                                Cancel Order
+                                            </button>
+                                            <div class="mt-2 cancellation-feedback d-none"
+                                                id="cancellation-<%= order._id %>">
+                                                <div class="alert alert-warning">
+                                                    <p>Are you sure you want to cancel this order?</p>
+                                                    <div class="d-flex gap-2">
+                                                        <button class="btn btn-sm btn-danger confirm-cancel-btn"
+                                                            data-order-id="<%= order._id %>">Yes, Cancel</button>
+                                                        <button class="btn btn-sm btn-secondary cancel-cancel-btn"
+                                                            data-order-id="<%= order._id %>">No, Keep Order</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <% }) %>
+            </div>
+            <% } else { %>
+                <div class="alert alert-info">
+                    <p>You haven't placed any orders yet.</p>
+                    <a href="/order" class="btn btn-primary mt-2">Order Food Now</a>
+                </div>
+                <% } %>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Show confirmation dialog when cancel button is clicked
+            const cancelButtons = document.querySelectorAll('.cancel-order-btn');
+
+            cancelButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const orderId = this.dataset.orderId;
+                    const cancellationDiv = document.getElementById(`cancellation-${orderId}`);
+
+                    // Hide all other cancellation divs first
+                    document.querySelectorAll('.cancellation-feedback').forEach(div => {
+                        div.classList.add('d-none');
+                    });
+
+                    // Show this cancellation div
+                    cancellationDiv.classList.remove('d-none');
+                });
+            });
+
+            // Cancel the cancellation
+            document.querySelectorAll('.cancel-cancel-btn').forEach(button => {
+                button.addEventListener('click', function () {
+                    const orderId = this.dataset.orderId;
+                    document.getElementById(`cancellation-${orderId}`).classList.add('d-none');
+                });
+            });
+
+            // Confirm the cancellation
+            document.querySelectorAll('.confirm-cancel-btn').forEach(button => {
+                button.addEventListener('click', async function () {
+                    const orderId = this.dataset.orderId;
+                    const cancellationDiv = document.getElementById(`cancellation-${orderId}`);
+
+                    // Change content to show processing
+                    cancellationDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span>Processing cancellation...</span>
+                            </div>
+                        </div>
+                    `;
+
+                    try {
+                        const response = await fetch(`/cancel-order/${orderId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            cancellationDiv.innerHTML = `
+                                <div class="alert alert-success">
+                                    <p>Order cancelled successfully!</p>
+                                    <button class="btn btn-sm btn-primary mt-2 reload-btn">Refresh Page</button>
+                                </div>
+                            `;
+
+                            // Add event listener to the new button
+                            cancellationDiv.querySelector('.reload-btn').addEventListener('click', () => {
+                                window.location.reload();
+                            });
+                        } else {
+                            cancellationDiv.innerHTML = `
+                                <div class="alert alert-danger">
+                                    <p>${result.error || 'Failed to cancel order'}</p>
+                                    <button class="btn btn-sm btn-secondary mt-2 close-alert-btn" 
+                                        data-order-id="${orderId}">Close</button>
+                                </div>
+                            `;
+
+                            // Add event listener to the new button
+                            cancellationDiv.querySelector('.close-alert-btn').addEventListener('click', function () {
+                                cancellationDiv.classList.add('d-none');
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error cancelling order:', error);
+                        cancellationDiv.innerHTML = `
+                            <div class="alert alert-danger">
+                                <p>An error occurred while cancelling the order</p>
+                                <button class="btn btn-sm btn-secondary mt-2 close-alert-btn" 
+                                    data-order-id="${orderId}">Close</button>
+                            </div>
+                        `;
+
+                        // Add event listener to the new button
+                        cancellationDiv.querySelector('.close-alert-btn').addEventListener('click', function () {
+                            cancellationDiv.classList.add('d-none');
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+
+    <%- include('partials/footer') %>

@@ -1,0 +1,19 @@
+<%- include('partials/header') %>
+
+    <div class="container mt-5 text-center">
+        <div class="row">
+            <div class="col-md-8 offset-md-2">
+                <h1 class="display-4">Server Error</h1>
+                <p class="lead">Something went wrong on our end. Please try again later.</p>
+                <% if (process.env.NODE_ENV==='development' ) { %>
+                    <div class="alert alert-danger mt-4">
+                        <h5>Error Details:</h5>
+                        <pre><%= error.message %></pre>
+                    </div>
+                    <% } %>
+                        <a href="/" class="btn btn-primary mt-3">Go to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <%- include('partials/footer') %>
