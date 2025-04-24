@@ -33,6 +33,13 @@
                                             <% if(item.name.toLowerCase().includes('premium')) { %>
                                                 <span class="badge bg-warning text-dark">Premium</span>
                                                 <% } %>
+
+                                                    <% if (item.name.toLowerCase().includes('wine') ||
+                                                        item.name.toLowerCase().includes('beer') ||
+                                                        item.name.toLowerCase().includes('cocktail') ||
+                                                        item.name.toLowerCase().includes('alcohol')) { %>
+                                                        <span class="badge bg-danger text-white">Alcohol</span>
+                                                        <% } %>
                                     </h5>
                                     <p class="card-text">
                                         $<%= item.price.toFixed(2) %>
@@ -46,11 +53,30 @@
                                                         %>
                                                 </span>
                                                 <% } %>
+
+                                                    <span class="ms-2 tax-info" data-is-alcoholic="<%= item.name.toLowerCase().includes('wine') || 
+                                                                   item.name.toLowerCase().includes('beer') || 
+                                                                   item.name.toLowerCase().includes('cocktail') || 
+                                                                   item.name.toLowerCase().includes('alcohol') %>">
+                                                        <small class="text-muted">+Tax: $<span class="item-tax-amount">
+                                                                <%= (item.name.toLowerCase().includes('wine') ||
+                                                                    item.name.toLowerCase().includes('beer') ||
+                                                                    item.name.toLowerCase().includes('cocktail') ||
+                                                                    item.name.toLowerCase().includes('alcohol')) ?
+                                                                    (item.price * 0.1125).toFixed(2) : (item.price *
+                                                                    0.0875).toFixed(2) %>
+                                                            </span></small>
+                                                    </span>
                                     </p>
                                 </div>
-                                <input type="number" min="0" max="10" value="0" class="form-control w-25 item-quantity"
-                                    data-id="<%= item.id || item._id %>" data-name="<%= item.name %>"
-                                    data-price="<%= item.price %>">
+                                <div>
+                                    <input type="number" min="0" max="10" value="0"
+                                        class="form-control w-25 item-quantity" data-id="<%= item.id || item._id %>"
+                                        data-name="<%= item.name %>" data-price="<%= item.price %>" data-is-alcoholic="<%= item.name.toLowerCase().includes('wine') || 
+                                                            item.name.toLowerCase().includes('beer') || 
+                                                            item.name.toLowerCase().includes('cocktail') || 
+                                                            item.name.toLowerCase().includes('alcohol') %>">
+                                </div>
                             </div>
                         </div>
                         <% }); %>
@@ -75,6 +101,14 @@
                                 </div>
                                 <hr>
                                 <div class="d-flex justify-content-between">
+                                    <span>Subtotal:</span>
+                                    <span>$<span id="subtotalPrice">0.00</span></span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Tax:</span>
+                                    <span>$<span id="taxAmount">0.00</span></span>
+                                </div>
+                                <div class="d-flex justify-content-between mt-2">
                                     <strong>Total Price:</strong>
                                     <strong>$<span id="totalPrice">0.00</span></strong>
                                 </div>
@@ -107,6 +141,8 @@
                         <div class="card-body">
                             <p>Your order has been created. Please proceed to checkout to complete your payment.</p>
                             <p><strong>Order ID:</strong> <span id="summaryOrderId"></span></p>
+                            <p><strong>Subtotal:</strong> $<span id="summarySubtotal"></span></p>
+                            <p><strong>Tax:</strong> $<span id="summaryTax"></span></p>
                             <p><strong>Total:</strong> $<span id="summaryTotal"></span></p>
                             <a id="checkoutLink" href="#" class="btn btn-primary">Proceed to Checkout</a>
                         </div>
@@ -120,10 +156,14 @@
         document.addEventListener('DOMContentLoaded', function () {
             const quantityInputs = document.querySelectorAll('.item-quantity');
             const totalPriceSpan = document.getElementById('totalPrice');
+            const subtotalPriceSpan = document.getElementById('subtotalPrice');
+            const taxAmountSpan = document.getElementById('taxAmount');
             const orderForm = document.getElementById('orderForm');
             const orderProcessing = document.getElementById('orderProcessing');
             const orderSummary = document.getElementById('orderSummary');
             const summaryOrderId = document.getElementById('summaryOrderId');
+            const summarySubtotal = document.getElementById('summarySubtotal');
+            const summaryTax = document.getElementById('summaryTax');
             const summaryTotal = document.getElementById('summaryTotal');
             const checkoutLink = document.getElementById('checkoutLink');
             const orderSummaryItems = document.getElementById('orderSummaryItems');
@@ -134,6 +174,15 @@
             const minOrderWarning = document.getElementById('minOrderWarning');
             const categoryButtons = document.querySelectorAll('[data-category]');
             const menuItems = document.querySelectorAll('.menu-item');
+
+            // Tax calculation function
+            function calculateTax(item) {
+                const price = parseFloat(item.price);
+                const isAlcoholic = item.isAlcoholic === true || item.isAlcoholic === "true";
+                const taxRate = isAlcoholic ? 0.1125 : 0.0875;
+
+                return parseFloat((price * taxRate).toFixed(2));
+            }
 
             // Rule engine validation client-side
             function validateOrder(orderData) {
@@ -164,9 +213,24 @@
                 }
 
                 // Rule: Minimum order value
-                if (orderData.totalPrice < 5) {
-                    errors.push("Minimum order value is $5");
+                if (orderData.subtotal < 5) {
+                    errors.push("Minimum order value is $5 (before tax)");
                 }
+
+                // Rule: Alcoholic beverage minimum price
+                const invalidAlcoholicItems = orderData.items ? orderData.items.filter(item =>
+                    (item.name.toLowerCase().includes('wine') ||
+                        item.name.toLowerCase().includes('beer') ||
+                        item.name.toLowerCase().includes('cocktail') ||
+                        item.name.toLowerCase().includes('alcohol')) &&
+                    item.price < 8
+                ) : [];
+
+                if (invalidAlcoholicItems.length > 0) {
+                    errors.push("Alcoholic beverages must be priced at least $8");
+                }
+
+                // No tax exempt validation needed
 
                 return {
                     valid: errors.length === 0,
@@ -175,11 +239,13 @@
             }
 
             function updateOrderButton() {
-                const { totalPrice, orderItems } = getOrderDetails();
+                const { subtotal, taxAmount, totalPrice, orderItems } = getOrderDetails();
 
                 // Validate order
                 const orderData = {
                     items: orderItems,
+                    subtotal: subtotal,
+                    taxAmount: taxAmount,
                     totalPrice: totalPrice,
                     deliveryAddress: deliveryAddress.value.trim()
                 };
@@ -191,7 +257,7 @@
                 validationErrors.classList.add('d-none');
 
                 // Show minimum order warning if needed
-                if (totalPrice < 5) {
+                if (subtotal < 5) {
                     minOrderWarning.classList.remove('d-none');
                 } else {
                     minOrderWarning.classList.add('d-none');
@@ -216,28 +282,51 @@
             }
 
             function getOrderDetails() {
-                let totalPrice = 0;
+                let subtotal = 0;
+                let taxAmount = 0;
                 const orderItems = [];
 
                 quantityInputs.forEach(input => {
                     const quantity = parseInt(input.value) || 0;
+                    if (quantity <= 0) return;
+
+                    const id = input.dataset.id;
                     const price = parseFloat(input.dataset.price);
                     const name = input.dataset.name;
-                    const id = input.dataset.id;
+                    const isAlcoholic = input.dataset.isAlcoholic === "true";
 
-                    if (quantity > 0) {
-                        orderItems.push({
-                            id: id,
-                            name: name,
-                            quantity: quantity,
-                            price: price
-                        });
-                        totalPrice += quantity * price;
-                    }
+                    const item = {
+                        id: id,
+                        name: name,
+                        quantity: quantity,
+                        price: price,
+                        isAlcoholic: isAlcoholic
+                    };
+
+                    // Calculate tax
+                    const itemTax = calculateTax(item);
+                    const itemSubtotal = quantity * price;
+                    const itemTaxTotal = quantity * itemTax;
+
+                    subtotal += itemSubtotal;
+                    taxAmount += itemTaxTotal;
+
+                    orderItems.push({
+                        ...item,
+                        itemTax: itemTax,
+                        subtotal: itemSubtotal,
+                        taxTotal: itemTaxTotal
+                    });
                 });
 
+                const totalPrice = subtotal + taxAmount;
+
+                // Update display
+                subtotalPriceSpan.textContent = subtotal.toFixed(2);
+                taxAmountSpan.textContent = taxAmount.toFixed(2);
                 totalPriceSpan.textContent = totalPrice.toFixed(2);
-                return { totalPrice, orderItems };
+
+                return { subtotal, taxAmount, totalPrice, orderItems };
             }
 
             function updateOrderSummary() {
@@ -254,11 +343,22 @@
 
                     orderItems.forEach(item => {
                         const li = document.createElement('li');
-                        li.className = 'd-flex justify-content-between';
-                        li.innerHTML = `
+                        li.className = 'd-flex justify-content-between mb-1';
+
+                        const itemDetails = document.createElement('div');
+                        itemDetails.innerHTML = `
                             <span>${item.quantity}x ${item.name}</span>
-                            <span>$${(item.price * item.quantity).toFixed(2)}</span>
                         `;
+
+                        const pricing = document.createElement('div');
+                        pricing.className = 'text-end';
+                        pricing.innerHTML = `
+                            <div>$${item.subtotal.toFixed(2)}</div>
+                            <small class="text-muted">+Tax: $${item.taxTotal.toFixed(2)}</small>
+                        `;
+
+                        li.appendChild(itemDetails);
+                        li.appendChild(pricing);
                         ul.appendChild(li);
                     });
 
@@ -299,16 +399,20 @@
                 });
             });
 
+            // No tax exempt checks to handle
+
             deliveryAddress.addEventListener('input', updateOrderButton);
 
             orderForm.addEventListener('submit', async function (e) {
                 e.preventDefault();
 
-                const { totalPrice, orderItems } = getOrderDetails();
+                const { subtotal, taxAmount, totalPrice, orderItems } = getOrderDetails();
 
                 // Final validation check
                 const orderData = {
                     items: orderItems,
+                    subtotal: subtotal,
+                    taxAmount: taxAmount,
                     totalPrice: totalPrice,
                     deliveryAddress: deliveryAddress.value.trim()
                 };
@@ -338,7 +442,17 @@
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            items: orderItems,
+                            items: orderItems.map(item => ({
+                                id: item.id,
+                                name: item.name,
+                                quantity: item.quantity,
+                                price: item.price,
+                                isAlcoholic: item.isAlcoholic,
+                                itemTax: item.itemTax
+                            })),
+                            subtotal: subtotal,
+                            taxAmount: taxAmount,
+                            totalPrice: totalPrice,
                             deliveryAddress: deliveryAddress.value.trim()
                         })
                     });
@@ -351,6 +465,8 @@
 
                         // Show order summary
                         summaryOrderId.textContent = result.orderId;
+                        summarySubtotal.textContent = subtotal.toFixed(2);
+                        summaryTax.textContent = taxAmount.toFixed(2);
                         summaryTotal.textContent = totalPrice.toFixed(2);
                         checkoutLink.href = `/checkout/${result.orderId}`;
                         orderSummary.classList.remove('d-none');

@@ -94,7 +94,7 @@ export default function EditMenuForm({ item, onSave, onCancel }) {
 
   return (
     <div>
-      <h3 className="text-lg font-semibold mb-2">Edit Menu Item</h3>
+      <h3 className="text-lg font-semibold mb-2 text-black">Edit Menu Item</h3>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-1 rounded mb-3 text-sm">
@@ -123,7 +123,7 @@ export default function EditMenuForm({ item, onSave, onCancel }) {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full border rounded px-2 py-1 text-sm"
+            className="w-full border rounded px-2 py-1 text-sm text-black"
           />
         </div>
 
@@ -138,7 +138,7 @@ export default function EditMenuForm({ item, onSave, onCancel }) {
             onChange={handleChange}
             step="0.01"
             min="0"
-            className="w-full border rounded px-2 py-1 text-sm"
+            className="w-full border rounded px-2 py-1 text-sm text-black"
           />
         </div>
 
@@ -150,7 +150,7 @@ export default function EditMenuForm({ item, onSave, onCancel }) {
             name="category"
             value={formData.category}
             onChange={handleChange}
-            className="w-full border rounded px-2 py-1 text-sm"
+            className="w-full border rounded px-2 py-1 text-sm text-black"
           >
             <option value="appetizer">Appetizer</option>
             <option value="main">Main Course</option>

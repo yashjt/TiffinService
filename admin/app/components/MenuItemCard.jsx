@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import menuRuleEngine from "../utils/ruleEngine";
+
 import EditMenuForm from "./EditMenuForm";
 
 export default function MenuItemCard({ item, onDelete, onUpdate }) {
@@ -91,6 +93,10 @@ export default function MenuItemCard({ item, onDelete, onUpdate }) {
                 )}`}
               >
                 {item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+              </span>
+
+              <span className="text-sm text-gray-500">
+                With tax: ${menuRuleEngine.getFinalPrice(item).toFixed(2)}
               </span>
             </div>
           )}

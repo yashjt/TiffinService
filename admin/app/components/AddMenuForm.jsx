@@ -165,6 +165,18 @@ export default function AddMenuForm({ onAddItem }) {
             <option value="beverage">Beverage</option>
           </select>
         </div>
+        <div className="mb-3">
+          <label className="flex items-center text-gray-700 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="taxExempt"
+              checked={formData.taxExempt}
+              onChange={handleChange}
+              className="mr-2"
+            />
+            Tax exempt item
+          </label>
+        </div>
 
         <button
           type="submit"

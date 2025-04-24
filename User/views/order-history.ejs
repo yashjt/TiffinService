@@ -32,11 +32,21 @@
                                                     <th>Item</th>
                                                     <th>Quantity</th>
                                                     <th>Price</th>
+                                                    <th>Tax</th>
                                                     <th>Subtotal</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <% order.items.forEach(item=> { %>
+                                                <% order.items.forEach(item=> {
+                                                    // Calculate tax for display purposes
+                                                    const isAlcoholic = item.name.toLowerCase().includes('wine') ||
+                                                    item.name.toLowerCase().includes('beer') ||
+                                                    item.name.toLowerCase().includes('cocktail') ||
+                                                    item.name.toLowerCase().includes('alcohol');
+                                                    const taxRate = isAlcoholic ? 0.1125 : 0.0875;
+                                                    const itemTax = item.price * taxRate;
+                                                    const totalWithTax = item.price + itemTax;
+                                                    %>
                                                     <tr>
                                                         <td>
                                                             <%= item.name %>
@@ -53,14 +63,36 @@
                                                         </td>
                                                         <td>$<%= item.price.toFixed(2) %>
                                                         </td>
-                                                        <td>$<%= (item.price * item.quantity).toFixed(2) %>
+                                                        <td>$<%= (itemTax * item.quantity).toFixed(2) %>
+                                                                <% if (isAlcoholic) { %>
+                                                                    <span
+                                                                        class="badge bg-danger text-white">Alcohol</span>
+                                                                    <% } %>
+                                                        </td>
+                                                        <td>$<%= ((item.price + itemTax) * item.quantity).toFixed(2) %>
                                                         </td>
                                                     </tr>
                                                     <% }) %>
                                                         <tr class="table-active">
+                                                            <td colspan="3" class="text-end"><strong>Subtotal:</strong>
+                                                            </td>
+                                                            <td colspan="2"><strong>$<%= order.subtotal ?
+                                                                        order.subtotal.toFixed(2) :
+                                                                        order.totalPrice.toFixed(2) %></strong>
+                                                            </td>
+                                                        </tr>
+                                                        <tr class="table-active">
+                                                            <td colspan="3" class="text-end"><strong>Tax:</strong>
+                                                            </td>
+                                                            <td colspan="2"><strong>$<%= order.taxAmount ?
+                                                                        order.taxAmount.toFixed(2) : '0.00' %></strong>
+                                                            </td>
+                                                        </tr>
+                                                        <tr class="table-active">
                                                             <td colspan="3" class="text-end"><strong>Total:</strong>
                                                             </td>
-                                                            <td><strong>$<%= order.totalPrice.toFixed(2) %></strong>
+                                                            <td colspan="2"><strong>$<%= order.totalPrice.toFixed(2) %>
+                                                                        </strong>
                                                             </td>
                                                         </tr>
                                             </tbody>

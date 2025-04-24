@@ -6,6 +6,12 @@
 class RuleEngine {
   constructor() {
     this.rules = [];
+    // Default tax settings
+    this.taxConfig = {
+      baseRate: 0.0875, // 8.75% default tax rate
+      alcoholRate: 0.1125, // 11.25% tax rate for alcoholic beverages
+      exemptCategories: ["dessert"], // Categories that might have different tax treatment
+    };
   }
 
   /**
@@ -43,6 +49,97 @@ class RuleEngine {
       valid: errors.length === 0,
       errors,
     };
+  }
+
+  /**
+   * Calculate tax for an item
+   * @param {object} item - The menu item data
+   * @returns {number} The calculated tax amount
+   */
+  calculateItemTax(item) {
+    const price = Number(item.price);
+    let taxRate = this.taxConfig.baseRate;
+
+    // Apply special tax rate for alcoholic beverages
+    if (this.isAlcoholicBeverage(item)) {
+      taxRate = this.taxConfig.alcoholRate;
+    }
+
+    // Apply special treatment for certain categories
+    if (
+      item.category &&
+      this.taxConfig.exemptCategories.includes(item.category)
+    ) {
+      taxRate = taxRate / 2; // Half tax rate for special categories
+    }
+
+    return Number((price * taxRate).toFixed(2));
+  }
+
+  /**
+   * Calculate total tax for a full order
+   * @param {object} order - The complete order data
+   * @returns {number} Total tax amount for the order
+   */
+  calculateOrderTax(order) {
+    if (!order.items || !Array.isArray(order.items)) {
+      return 0;
+    }
+
+    return order.items.reduce((totalTax, item) => {
+      const itemTax = this.calculateItemTax(item);
+      return totalTax + itemTax * (item.quantity || 1);
+    }, 0);
+  }
+
+  /**
+   * Check if an item is an alcoholic beverage
+   * @param {object} item - The menu item
+   * @returns {boolean} Whether the item is alcoholic
+   */
+  isAlcoholicBeverage(item) {
+    if (item.isAlcoholic === true) {
+      return true;
+    }
+
+    if (item.category !== "beverage") {
+      return false;
+    }
+
+    const name = item.name.toLowerCase();
+    return (
+      name.includes("wine") ||
+      name.includes("beer") ||
+      name.includes("cocktail") ||
+      name.includes("alcohol")
+    );
+  }
+
+  /**
+   * Get subtotal price before tax
+   * @param {object} order - The order data
+   * @returns {number} Subtotal before tax
+   */
+  getSubtotal(order) {
+    if (!order.items || !Array.isArray(order.items)) {
+      return 0;
+    }
+
+    return order.items.reduce((subtotal, item) => {
+      return subtotal + Number(item.price) * (item.quantity || 1);
+    }, 0);
+  }
+
+  /**
+   * Get final price including tax
+   * @param {object} order - The order data
+   * @returns {number} The final price with tax
+   */
+  getFinalPrice(order) {
+    const subtotal = this.getSubtotal(order);
+    const tax = this.calculateOrderTax(order);
+
+    return Number((subtotal + tax).toFixed(2));
   }
 }
 
@@ -92,14 +189,28 @@ orderRuleEngine.addRule(
 orderRuleEngine.addRule(
   "minimumOrderValue",
   (order) => {
-    const totalValue =
-      order.totalPrice ||
-      (order.items
-        ? order.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-        : 0);
-    return totalValue >= 5;
+    // Use subtotal for minimum order validation
+    const subtotal = orderRuleEngine.getSubtotal(order);
+    return subtotal >= 5;
   },
-  "Minimum order value is $5"
+  "Minimum order value is $5 (before tax)"
 );
+
+// Rule: Alcoholic beverage pricing validation
+orderRuleEngine.addRule(
+  "alcoholBeverageMinPrice",
+  (order) => {
+    if (!order.items || !Array.isArray(order.items)) return true;
+    return order.items.every((item) => {
+      if (orderRuleEngine.isAlcoholicBeverage(item)) {
+        return item.price >= 8;
+      }
+      return true;
+    });
+  },
+  "Alcoholic beverages must be priced at least $8"
+);
+
+// No tax exempt rules needed
 
 module.exports = orderRuleEngine;
