@@ -45,26 +45,19 @@
                                         $<%= item.price.toFixed(2) %>
                                             <% if(item.category) { %>
                                                 <span class="badge 
-                                                <%= item.category === 'appetizer' ? 'bg-info' : 
-                                                   item.category === 'main' ? 'bg-success' : 
-                                                   item.category === 'dessert' ? 'bg-danger' : 
-                                                   item.category === 'beverage' ? 'bg-primary' : 'bg-secondary' %>">
+                                            <%= item.category === 'appetizer' ? 'bg-info' : 
+                                               item.category === 'main' ? 'bg-success' : 
+                                               item.category === 'dessert' ? 'bg-danger' : 
+                                               item.category === 'beverage' ? 'bg-primary' : 'bg-secondary' %>">
                                                     <%= item.category.charAt(0).toUpperCase() + item.category.slice(1)
                                                         %>
                                                 </span>
                                                 <% } %>
 
-                                                    <span class="ms-2 tax-info" data-is-alcoholic="<%= item.name.toLowerCase().includes('wine') || 
-                                                                   item.name.toLowerCase().includes('beer') || 
-                                                                   item.name.toLowerCase().includes('cocktail') || 
-                                                                   item.name.toLowerCase().includes('alcohol') %>">
-                                                        <small class="text-muted">+Tax: $<span class="item-tax-amount">
-                                                                <%= (item.name.toLowerCase().includes('wine') ||
-                                                                    item.name.toLowerCase().includes('beer') ||
-                                                                    item.name.toLowerCase().includes('cocktail') ||
-                                                                    item.name.toLowerCase().includes('alcohol')) ?
-                                                                    (item.price * 0.1125).toFixed(2) : (item.price *
-                                                                    0.0875).toFixed(2) %>
+                                                    <span class="ms-2">
+                                                        <small class="text-muted">With tax: $<span
+                                                                class="item-total-price">
+                                                                <%= item.priceWithTax.toFixed(2) %>
                                                             </span></small>
                                                     </span>
                                     </p>
@@ -72,10 +65,12 @@
                                 <div>
                                     <input type="number" min="0" max="10" value="0"
                                         class="form-control w-25 item-quantity" data-id="<%= item.id || item._id %>"
-                                        data-name="<%= item.name %>" data-price="<%= item.price %>" data-is-alcoholic="<%= item.name.toLowerCase().includes('wine') || 
-                                                            item.name.toLowerCase().includes('beer') || 
-                                                            item.name.toLowerCase().includes('cocktail') || 
-                                                            item.name.toLowerCase().includes('alcohol') %>">
+                                        data-name="<%= item.name %>" data-price="<%= item.price %>"
+                                        data-tax="<%= item.tax %>" data-total="<%= item.priceWithTax %>"
+                                        data-category="<%= item.category || 'main' %>" data-is-alcoholic="<%= item.name.toLowerCase().includes('wine') || 
+                                                        item.name.toLowerCase().includes('beer') || 
+                                                        item.name.toLowerCase().includes('cocktail') || 
+                                                        item.name.toLowerCase().includes('alcohol') %>">
                                 </div>
                             </div>
                         </div>
@@ -116,6 +111,8 @@
                                     <small>Minimum order value is $5.00</small>
                                 </div>
                             </div>
+
+                           
 
                             <!-- Validation errors area -->
                             <div id="validationErrors" class="alert alert-danger d-none mb-3">
@@ -175,62 +172,24 @@
             const categoryButtons = document.querySelectorAll('[data-category]');
             const menuItems = document.querySelectorAll('.menu-item');
 
-            // Tax calculation function
-            function calculateTax(item) {
-                const price = parseFloat(item.price);
-                const isAlcoholic = item.isAlcoholic === true || item.isAlcoholic === "true";
-                const taxRate = isAlcoholic ? 0.1125 : 0.0875;
-
-                return parseFloat((price * taxRate).toFixed(2));
-            }
-
-            // Rule engine validation client-side
+            // Simple validation rules
             function validateOrder(orderData) {
                 const errors = [];
 
-                // Rule: Order should have at least one item
+                // At least one item
                 if (!orderData.items || orderData.items.length === 0) {
                     errors.push("Order must contain at least one item");
                 }
 
-                // Rule: Delivery address must be at least 10 characters
+                // Delivery address must be at least 10 characters
                 if (!orderData.deliveryAddress || orderData.deliveryAddress.length < 10) {
                     errors.push("Delivery address must be at least 10 characters long");
                 }
 
-                // Rule: Individual item quantity validation
-                if (orderData.items && orderData.items.some(item => item.quantity > 10)) {
-                    errors.push("Maximum quantity per item is 10");
-                }
-
-                // Rule: Premium item pricing validation
-                const invalidPremiumItems = orderData.items ? orderData.items.filter(item =>
-                    item.name.toLowerCase().includes('premium') && item.price < 15
-                ) : [];
-
-                if (invalidPremiumItems.length > 0) {
-                    errors.push("Premium items must be priced at least $15");
-                }
-
-                // Rule: Minimum order value
+                // Minimum order value
                 if (orderData.subtotal < 5) {
                     errors.push("Minimum order value is $5 (before tax)");
                 }
-
-                // Rule: Alcoholic beverage minimum price
-                const invalidAlcoholicItems = orderData.items ? orderData.items.filter(item =>
-                    (item.name.toLowerCase().includes('wine') ||
-                        item.name.toLowerCase().includes('beer') ||
-                        item.name.toLowerCase().includes('cocktail') ||
-                        item.name.toLowerCase().includes('alcohol')) &&
-                    item.price < 8
-                ) : [];
-
-                if (invalidAlcoholicItems.length > 0) {
-                    errors.push("Alcoholic beverages must be priced at least $8");
-                }
-
-                // No tax exempt validation needed
 
                 return {
                     valid: errors.length === 0,
@@ -292,7 +251,10 @@
 
                     const id = input.dataset.id;
                     const price = parseFloat(input.dataset.price);
+                    const tax = parseFloat(input.dataset.tax);
+                    const total = parseFloat(input.dataset.total);
                     const name = input.dataset.name;
+                    const category = input.dataset.category;
                     const isAlcoholic = input.dataset.isAlcoholic === "true";
 
                     const item = {
@@ -300,22 +262,24 @@
                         name: name,
                         quantity: quantity,
                         price: price,
+                        category: category,
                         isAlcoholic: isAlcoholic
                     };
 
-                    // Calculate tax
-                    const itemTax = calculateTax(item);
+                    // Use pre-calculated tax from data attributes
                     const itemSubtotal = quantity * price;
-                    const itemTaxTotal = quantity * itemTax;
+                    const itemTaxTotal = quantity * tax;
+                    const itemTotalPrice = quantity * total;
 
                     subtotal += itemSubtotal;
                     taxAmount += itemTaxTotal;
 
                     orderItems.push({
                         ...item,
-                        itemTax: itemTax,
+                        itemTax: tax,
                         subtotal: itemSubtotal,
-                        taxTotal: itemTaxTotal
+                        taxTotal: itemTaxTotal,
+                        totalWithTax: itemTotalPrice
                     });
                 });
 
@@ -347,15 +311,15 @@
 
                         const itemDetails = document.createElement('div');
                         itemDetails.innerHTML = `
-                            <span>${item.quantity}x ${item.name}</span>
-                        `;
+                        <span>${item.quantity}x ${item.name}</span>
+                    `;
 
                         const pricing = document.createElement('div');
                         pricing.className = 'text-end';
                         pricing.innerHTML = `
-                            <div>$${item.subtotal.toFixed(2)}</div>
-                            <small class="text-muted">+Tax: $${item.taxTotal.toFixed(2)}</small>
-                        `;
+                        <div>$${item.subtotal.toFixed(2)}</div>
+                        <small class="text-muted">+Tax: $${item.taxTotal.toFixed(2)}</small>
+                    `;
 
                         li.appendChild(itemDetails);
                         li.appendChild(pricing);
@@ -398,8 +362,6 @@
                     updateOrderSummary();
                 });
             });
-
-            // No tax exempt checks to handle
 
             deliveryAddress.addEventListener('input', updateOrderButton);
 
@@ -447,6 +409,7 @@
                                 name: item.name,
                                 quantity: item.quantity,
                                 price: item.price,
+                                category: item.category,
                                 isAlcoholic: item.isAlcoholic,
                                 itemTax: item.itemTax
                             })),

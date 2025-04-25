@@ -1,5 +1,4 @@
 <%- include('partials/header') %>
-
     <div class="container mt-5">
         <h2>Your Order History</h2>
 
@@ -16,9 +15,9 @@
                                     </small>
                                 </div>
                                 <span class="badge <%= order.status === 'Delivered' ? 'bg-success' : 
-                                               order.status === 'Confirmed' ? 'bg-primary' : 
-                                               order.status === 'Cancelled' ? 'bg-danger' : 
-                                               'bg-warning' %>">
+                                           order.status === 'Confirmed' ? 'bg-primary' : 
+                                           order.status === 'Cancelled' ? 'bg-danger' : 
+                                           'bg-warning' %>">
                                     <%= order.status %>
                                 </span>
                             </div>
@@ -31,70 +30,93 @@
                                                 <tr>
                                                     <th>Item</th>
                                                     <th>Quantity</th>
-                                                    <th>Price</th>
+                                                    <th>Unit Price</th>
                                                     <th>Tax</th>
-                                                    <th>Subtotal</th>
+                                                    <th>Total</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <% order.items.forEach(item=> {
-                                                    // Calculate tax for display purposes
-                                                    const isAlcoholic = item.name.toLowerCase().includes('wine') ||
+                                                    const isAlcoholic = item.isAlcoholic ||
+                                                    item.name.toLowerCase().includes('wine') ||
                                                     item.name.toLowerCase().includes('beer') ||
                                                     item.name.toLowerCase().includes('cocktail') ||
                                                     item.name.toLowerCase().includes('alcohol');
-                                                    const taxRate = isAlcoholic ? 0.1125 : 0.0875;
-                                                    const itemTax = item.price * taxRate;
-                                                    const totalWithTax = item.price + itemTax;
-                                                    %>
-                                                    <tr>
-                                                        <td>
-                                                            <%= item.name %>
-                                                                <% if(item.name.toLowerCase().includes('premium')) { %>
-                                                                    <span
-                                                                        class="badge bg-warning text-dark">Premium</span>
-                                                                    <% } %>
-                                                        </td>
-                                                        <td>
-                                                            <%= item.quantity %>
-                                                                <% if (item.quantity>= 5) { %>
-                                                                    <span class="badge bg-info text-dark">Bulk</span>
-                                                                    <% } %>
-                                                        </td>
-                                                        <td>$<%= item.price.toFixed(2) %>
-                                                        </td>
-                                                        <td>$<%= (itemTax * item.quantity).toFixed(2) %>
-                                                                <% if (isAlcoholic) { %>
-                                                                    <span
-                                                                        class="badge bg-danger text-white">Alcohol</span>
-                                                                    <% } %>
-                                                        </td>
-                                                        <td>$<%= ((item.price + itemTax) * item.quantity).toFixed(2) %>
-                                                        </td>
-                                                    </tr>
-                                                    <% }) %>
-                                                        <tr class="table-active">
-                                                            <td colspan="3" class="text-end"><strong>Subtotal:</strong>
+
+                                                    const category = item.category || 'main';
+
+                                                    <% order.items.forEach(item=> {
+                                                        const isAlcoholic = item.isAlcoholic ||
+                                                        item.name.toLowerCase().includes('wine') ||
+                                                        item.name.toLowerCase().includes('beer') ||
+                                                        item.name.toLowerCase().includes('cocktail') ||
+                                                        item.name.toLowerCase().includes('alcohol');
+
+                                                        const category = item.category || 'main';
+
+                                                        // Calculate tax based on tax configuration
+                                                        let taxRate = taxConfig.baseRate;
+
+                                                        // Apply special tax rate for alcoholic beverages
+                                                        if (isAlcoholic && category === 'beverage') {
+                                                        taxRate = taxConfig.alcoholRate;
+                                                        }
+
+                                                        // Apply special treatment for desserts (lower tax)
+                                                        if (category === 'dessert') {
+                                                        taxRate = taxRate * taxConfig.dessertRateMultiplier;
+                                                        }
+
+                                                        // Calculate prices
+                                                        const itemTax = item.price * taxRate;
+                                                        const totalWithTax = item.price + itemTax;
+                                                        const lineTotal = totalWithTax * item.quantity;
+                                                        %>
+                                                        <tr>
+                                                            <td>
+                                                                <%= item.name %>
+                                                                    <% if(item.name.toLowerCase().includes('premium')) {
+                                                                        %>
+                                                                        <span
+                                                                            class="badge bg-warning text-dark">Premium</span>
+                                                                        <% } %>
+                                                                            <% if(isAlcoholic) { %>
+                                                                                <span
+                                                                                    class="badge bg-danger text-white">Alcohol</span>
+                                                                                <% } %>
                                                             </td>
-                                                            <td colspan="2"><strong>$<%= order.subtotal ?
-                                                                        order.subtotal.toFixed(2) :
-                                                                        order.totalPrice.toFixed(2) %></strong>
+                                                            <td>
+                                                                <%= item.quantity %>
+                                                            </td>
+                                                            <td>$<%= item.price.toFixed(2) %>
+                                                            </td>
+                                                            <td>$<%= (itemTax * item.quantity).toFixed(2) %>
+                                                            </td>
+                                                            <td>$<%= lineTotal.toFixed(2) %>
                                                             </td>
                                                         </tr>
-                                                        <tr class="table-active">
-                                                            <td colspan="3" class="text-end"><strong>Tax:</strong>
-                                                            </td>
-                                                            <td colspan="2"><strong>$<%= order.taxAmount ?
-                                                                        order.taxAmount.toFixed(2) : '0.00' %></strong>
-                                                            </td>
-                                                        </tr>
-                                                        <tr class="table-active">
-                                                            <td colspan="3" class="text-end"><strong>Total:</strong>
-                                                            </td>
-                                                            <td colspan="2"><strong>$<%= order.totalPrice.toFixed(2) %>
-                                                                        </strong>
-                                                            </td>
-                                                        </tr>
+                                                        <% }) %>
+                                                            <tr class="table-active">
+                                                                <td colspan="4" class="text-end">
+                                                                    <strong>Subtotal:</strong>
+                                                                </td>
+                                                                <td><strong>$<%= order.subtotal ?
+                                                                            order.subtotal.toFixed(2) :
+                                                                            order.totalPrice.toFixed(2) %></strong></td>
+                                                            </tr>
+                                                            <tr class="table-active">
+                                                                <td colspan="4" class="text-end"><strong>Tax:</strong>
+                                                                </td>
+                                                                <td><strong>$<%= order.taxAmount ?
+                                                                            order.taxAmount.toFixed(2) : '0.00' %>
+                                                                    </strong></td>
+                                                            </tr>
+                                                            <tr class="table-active">
+                                                                <td colspan="4" class="text-end"><strong>Total:</strong>
+                                                                </td>
+                                                                <td><strong>$<%= order.totalPrice.toFixed(2) %></strong>
+                                                                </td>
+                                                            </tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -103,6 +125,25 @@
                                         <p><strong>Address:</strong><br>
                                             <%= order.deliveryAddress %>
                                         </p>
+
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-light">
+                                                <strong>Tax Information</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                <small>
+                                                    <ul class="list-unstyled">
+                                                        <li>- Base Tax Rate: <%= (taxConfig.baseRate * 100).toFixed(2)
+                                                                %>%</li>
+                                                        <li>- Alcoholic Beverages: <%= (taxConfig.alcoholRate *
+                                                                100).toFixed(2) %>%</li>
+                                                        <li>- Desserts: <%= (taxConfig.baseRate *
+                                                                taxConfig.dessertRateMultiplier * 100).toFixed(2) %>%
+                                                        </li>
+                                                    </ul>
+                                                </small>
+                                            </div>
+                                        </div>
 
                                         <% if (order.status !=='Delivered' && order.status !=='Cancelled' ) { %>
                                             <button class="btn btn-sm btn-outline-danger cancel-order-btn"
@@ -173,15 +214,15 @@
 
                     // Change content to show processing
                     cancellationDiv.innerHTML = `
-                        <div class="alert alert-info">
-                            <div class="d-flex align-items-center">
-                                <div class="spinner-border spinner-border-sm me-2" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <span>Processing cancellation...</span>
-                            </div>
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                    `;
+                        <span>Processing cancellation...</span>
+                    </div>
+                </div>
+            `;
 
                     try {
                         const response = await fetch(`/cancel-order/${orderId}`, {
@@ -195,11 +236,11 @@
 
                         if (response.ok) {
                             cancellationDiv.innerHTML = `
-                                <div class="alert alert-success">
-                                    <p>Order cancelled successfully!</p>
-                                    <button class="btn btn-sm btn-primary mt-2 reload-btn">Refresh Page</button>
-                                </div>
-                            `;
+                        <div class="alert alert-success">
+                            <p>Order cancelled successfully!</p>
+                            <button class="btn btn-sm btn-primary mt-2 reload-btn">Refresh Page</button>
+                        </div>
+                    `;
 
                             // Add event listener to the new button
                             cancellationDiv.querySelector('.reload-btn').addEventListener('click', () => {
@@ -207,12 +248,12 @@
                             });
                         } else {
                             cancellationDiv.innerHTML = `
-                                <div class="alert alert-danger">
-                                    <p>${result.error || 'Failed to cancel order'}</p>
-                                    <button class="btn btn-sm btn-secondary mt-2 close-alert-btn" 
-                                        data-order-id="${orderId}">Close</button>
-                                </div>
-                            `;
+                        <div class="alert alert-danger">
+                            <p>${result.error || 'Failed to cancel order'}</p>
+                            <button class="btn btn-sm btn-secondary mt-2 close-alert-btn" 
+                                data-order-id="${orderId}">Close</button>
+                        </div>
+                    `;
 
                             // Add event listener to the new button
                             cancellationDiv.querySelector('.close-alert-btn').addEventListener('click', function () {
@@ -222,12 +263,12 @@
                     } catch (error) {
                         console.error('Error cancelling order:', error);
                         cancellationDiv.innerHTML = `
-                            <div class="alert alert-danger">
-                                <p>An error occurred while cancelling the order</p>
-                                <button class="btn btn-sm btn-secondary mt-2 close-alert-btn" 
-                                    data-order-id="${orderId}">Close</button>
-                            </div>
-                        `;
+                    <div class="alert alert-danger">
+                        <p>An error occurred while cancelling the order</p>
+                        <button class="btn btn-sm btn-secondary mt-2 close-alert-btn" 
+                            data-order-id="${orderId}">Close</button>
+                    </div>
+                `;
 
                         // Add event listener to the new button
                         cancellationDiv.querySelector('.close-alert-btn').addEventListener('click', function () {

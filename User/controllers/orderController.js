@@ -1,7 +1,68 @@
 const Order = require("../models/Order");
 const User = require("../models/User");
+const TaxConfig = require("../models/TaxConfig"); // Import the model directly
 const mongoose = require("mongoose");
-const orderRuleEngine = require("../utils/orderRuleEngine");
+
+// Function to get tax configuration from database
+
+async function getTaxConfig() {
+  try {
+    // Use the TaxConfig model directly
+    const config = await TaxConfig.findOne();
+
+    // Return default values if no config found
+    if (!config) {
+      return {
+        baseRate: 0.111,
+        alcoholRate: 0.125,
+        dessertRateMultiplier: 0.5,
+      };
+    }
+
+    return config;
+  } catch (error) {
+    console.error("Error fetching tax configuration:", error);
+    // Return default values if error
+    return {
+      baseRate: 0.111,
+      alcoholRate: 0.125,
+      dessertRateMultiplier: 0.5,
+    };
+  }
+}
+
+// Function to calculate tax for a menu item
+async function calculateItemTax(item) {
+  const taxConfig = await getTaxConfig();
+
+  // Skip tax calculation for tax-exempt items
+  if (item.taxExempt) {
+    return 0;
+  }
+
+  const price = Number(item.price);
+  let taxRate = taxConfig.baseRate;
+
+  // Apply special tax rate for alcoholic beverages
+  const isAlcoholic =
+    item.isAlcoholic ||
+    (item.category === "beverage" &&
+      (item.name.toLowerCase().includes("wine") ||
+        item.name.toLowerCase().includes("beer") ||
+        item.name.toLowerCase().includes("cocktail") ||
+        item.name.toLowerCase().includes("alcohol")));
+
+  if (isAlcoholic) {
+    taxRate = taxConfig.alcoholRate;
+  }
+
+  // Apply special treatment for desserts
+  if (item.category === "dessert") {
+    taxRate = taxRate * taxConfig.dessertRateMultiplier;
+  }
+
+  return Number((price * taxRate).toFixed(2));
+}
 
 exports.getOrderPage = async (req, res) => {
   // With Auth0, check if authenticated
@@ -10,6 +71,9 @@ exports.getOrderPage = async (req, res) => {
   }
 
   try {
+    // Get current tax configuration for rendering
+    const taxConfig = await getTaxConfig();
+
     // Connect to MongoDB and fetch menu items from the Next.js database
     const MenuModel = mongoose.connection.model(
       "Menu",
@@ -18,6 +82,7 @@ exports.getOrderPage = async (req, res) => {
         price: Number,
         category: String,
         isAvailable: Boolean,
+        taxExempt: Boolean,
       }),
       "menus"
     ); // 'menus' is the collection name your Next.js app uses
@@ -41,13 +106,26 @@ exports.getOrderPage = async (req, res) => {
             { id: 4, name: "Chicken Curry", price: 18, category: "main" },
           ];
 
-    // Format menu items to match the expected format
-    const formattedMenu = menu.map((item) => ({
-      id: item._id || item.id,
-      name: item.name,
-      price: item.price,
-      category: item.category || "main",
-    }));
+    // Format menu items to match the expected format and calculate tax
+    const formattedMenu = await Promise.all(
+      menu.map(async (item) => {
+        const formattedItem = {
+          id: item._id || item.id,
+          name: item.name,
+          price: item.price,
+          category: item.category || "main",
+          taxExempt: item.taxExempt || false,
+        };
+
+        // Add tax information
+        formattedItem.tax = await calculateItemTax(formattedItem);
+        formattedItem.priceWithTax = Number(
+          (formattedItem.price + formattedItem.tax).toFixed(2)
+        );
+
+        return formattedItem;
+      })
+    );
 
     // Use either database user or Auth0 user
     const user = req.user || req.oidc.user;
@@ -55,12 +133,14 @@ exports.getOrderPage = async (req, res) => {
     res.render("order", {
       user: user,
       menu: formattedMenu,
+      taxConfig: taxConfig,
       title: "Order Food",
       active: "order",
     });
   } catch (error) {
     console.error("Error fetching menu:", error);
     // Fallback to default menu if there's an error
+    const taxConfig = await getTaxConfig();
     const menu = [
       { id: 1, name: "Vegetarian Thali", price: 12, category: "main" },
       { id: 2, name: "Non-Vegetarian Thali", price: 15, category: "main" },
@@ -68,11 +148,33 @@ exports.getOrderPage = async (req, res) => {
       { id: 4, name: "Chicken Curry", price: 18, category: "main" },
     ];
 
+    // Calculate tax for each item
+    const formattedMenu = await Promise.all(
+      menu.map(async (item) => {
+        const formattedItem = {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          category: item.category,
+          taxExempt: false,
+        };
+
+        // Add tax information
+        formattedItem.tax = await calculateItemTax(formattedItem);
+        formattedItem.priceWithTax = Number(
+          (formattedItem.price + formattedItem.tax).toFixed(2)
+        );
+
+        return formattedItem;
+      })
+    );
+
     const user = req.user || req.oidc.user;
 
     res.render("order", {
       user: user,
-      menu: menu,
+      menu: formattedMenu,
+      taxConfig: taxConfig,
       title: "Order Food",
       active: "order",
     });
@@ -86,31 +188,54 @@ exports.createOrder = async (req, res) => {
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    const { items, deliveryAddress } = req.body;
+    const { items, deliveryAddress, subtotal, taxAmount, totalPrice } =
+      req.body;
 
     // Validate required fields
     if (!items || !Array.isArray(items) || !deliveryAddress) {
       return res.status(400).json({ error: "Invalid order details" });
     }
 
-    // calculate total price
-    const totalPrice = items.reduce((total, item) => {
-      return total + item.price * item.quantity;
-    }, 0);
+    // Basic validation
+    const validationErrors = [];
 
-    // Create order object for validation
-    const orderData = {
-      items: items,
-      totalPrice: totalPrice,
-      deliveryAddress: deliveryAddress,
-    };
+    // At least one item
+    if (items.length === 0) {
+      validationErrors.push({
+        rule: "minimumOrderItems",
+        message: "Order must contain at least one item",
+      });
+    }
 
-    // Validate with rule engine
-    const validationResult = orderRuleEngine.validate(orderData);
-    if (!validationResult.valid) {
+    // Delivery address must be at least 10 characters
+    if (deliveryAddress.length < 10) {
+      validationErrors.push({
+        rule: "deliveryAddressLength",
+        message: "Delivery address must be at least 10 characters long",
+      });
+    }
+
+    // Each item quantity must be 10 or less
+    if (items.some((item) => item.quantity > 10)) {
+      validationErrors.push({
+        rule: "itemQuantityLimit",
+        message: "Maximum quantity per item is 10",
+      });
+    }
+
+    // Minimum order value
+    if (subtotal < 5) {
+      validationErrors.push({
+        rule: "minimumOrderValue",
+        message: "Minimum order value is $5 (before tax)",
+      });
+    }
+
+    // Return validation errors if any
+    if (validationErrors.length > 0) {
       return res.status(400).json({
         error: "Order validation failed",
-        validationErrors: validationResult.errors,
+        validationErrors: validationErrors,
       });
     }
 
@@ -141,10 +266,12 @@ exports.createOrder = async (req, res) => {
       userId = dbUser._id;
     }
 
-    // create order
+    // Create order with the provided tax and pricing information
     const order = new Order({
       user: userId,
       items: items,
+      subtotal: subtotal,
+      taxAmount: taxAmount,
       totalPrice: totalPrice,
       deliveryAddress: deliveryAddress,
       status: "Pending", // Change default status to Pending until payment
@@ -170,6 +297,9 @@ exports.getUserOrders = async (req, res) => {
       return res.redirect("/login");
     }
 
+    // Get current tax configuration for rendering
+    const taxConfig = await getTaxConfig();
+
     let userId;
 
     // Get user ID from database user or Auth0 user
@@ -185,6 +315,7 @@ exports.getUserOrders = async (req, res) => {
         return res.render("order-history", {
           orders: [],
           user: auth0User,
+          taxConfig: taxConfig,
           title: "Order History",
           active: "orders",
         });
@@ -204,6 +335,7 @@ exports.getUserOrders = async (req, res) => {
     res.render("order-history", {
       orders,
       user: user,
+      taxConfig: taxConfig,
       title: "Order History",
       active: "orders",
     });

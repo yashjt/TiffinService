@@ -1,11 +1,11 @@
 export class RuleEngine {
   constructor() {
     this.rules = [];
-    // Default tax settings
+    // Default tax settings - these will be replaced with DB values
     this.taxConfig = {
-      baseRate: 0.0875, // 8.75% default tax rate
-      alcoholRate: 0.1125, // 11.25% tax rate for alcoholic beverages
-      exemptCategories: ["dessert"], // Categories that might have different tax treatment
+      baseRate: 0.122, // 11.1% default tax rate
+      alcoholRate: 0.1, // 12.5% tax rate for alcoholic beverages
+      dessertRateMultiplier: 0.5, // Half rate for desserts
     };
   }
 
@@ -47,6 +47,22 @@ export class RuleEngine {
   }
 
   /**
+   * Update tax configuration
+   * @param {object} newConfig - New tax configuration
+   */
+  updateTaxConfig(newConfig) {
+    if (newConfig.baseRate !== undefined) {
+      this.taxConfig.baseRate = newConfig.baseRate;
+    }
+    if (newConfig.alcoholRate !== undefined) {
+      this.taxConfig.alcoholRate = newConfig.alcoholRate;
+    }
+    if (newConfig.dessertRateMultiplier !== undefined) {
+      this.taxConfig.dessertRateMultiplier = newConfig.dessertRateMultiplier;
+    }
+  }
+
+  /**
    * Calculate tax for a menu item
    * @param {object} menuItem - The menu item data
    * @returns {number} The calculated tax amount
@@ -71,11 +87,9 @@ export class RuleEngine {
       taxRate = this.taxConfig.alcoholRate;
     }
 
-    // Apply special treatment for desserts (potentially lower tax)
-    if (this.taxConfig.exemptCategories.includes(menuItem.category)) {
-      // In some regions, desserts might have reduced tax or be exempt
-      // This is just an example - adjust according to your needs
-      taxRate = taxRate / 2;
+    // Apply special treatment for desserts (lower tax)
+    if (menuItem.category === "dessert") {
+      taxRate = taxRate * this.taxConfig.dessertRateMultiplier;
     }
 
     return Number((price * taxRate).toFixed(2));
@@ -141,11 +155,11 @@ menuRuleEngine.addRule(
         menu.name.toLowerCase().includes("cocktail") ||
         menu.name.toLowerCase().includes("alcohol"))
     ) {
-      return Number(menu.price) >= 8;
+      return Number(menu.price) >= 1.3;
     }
     return true;
   },
-  "Alcoholic beverages must be priced at least $8"
+  "Alcoholic beverages must be priced at least $1.3"
 );
 
 menuRuleEngine.addRule(
@@ -159,6 +173,25 @@ menuRuleEngine.addRule(
   },
   "Tax-exempt items must be priced at $5 or less"
 );
+
+// Function to fetch current tax configuration from API
+export async function fetchTaxConfig() {
+  try {
+    const response = await fetch("/api/tax-config");
+    if (response.ok) {
+      const data = await response.json();
+      // Update the rule engine with the fetched tax config
+      menuRuleEngine.updateTaxConfig(data.config);
+      return data.config;
+    }
+  } catch (error) {
+    console.error("Error fetching tax configuration:", error);
+  }
+  return null;
+}
+
+// Initialize tax configuration when this module is loaded
+fetchTaxConfig();
 
 // Export the singleton instance
 export default menuRuleEngine;
